@@ -1,6 +1,6 @@
 # Replacer
 
-Replaces strings in all files in a directory
+CLI tool to replace strings in all files in a directory (recursively) (It's written in rust and blazingly fast)
 
 # Usage
 
