@@ -1,4 +1,4 @@
-use tokio::fs;
+use std::fs;
 #[derive(Debug)]
 struct Replacement {
     pub from: String,
@@ -7,7 +7,7 @@ struct Replacement {
 #[tokio::main]
 async fn main() {
     let mut replacements: Vec<Replacement> = Vec::new();
-    let reps = fs::read_to_string("./config.toml").await.unwrap();
+    let reps = fs::read_to_string("./config.toml").unwrap();
     for z in reps.split("\n"){
         if !z.starts_with("#") && z != "" {
             let x = z.split("#").collect::<Vec<&str>>()[0];
@@ -20,8 +20,14 @@ async fn main() {
             );
         }
     }
-    for thing in replacements {
-        print!("{:?}", thing.from);
-        println!(" -> {:?}", thing.to);
+    // for thing in replacements {
+    //     print!("{:?}", thing.from);
+    //     println!(" -> {:?}", thing.to);
+    // }
+    // for thing in fs::read_dir("./").await.unwrap() {
+
+    let paths = std::fs::read_dir("./").unwrap();
+    for path in paths {
+        println!("{}", path.unwrap())
     }
 }
