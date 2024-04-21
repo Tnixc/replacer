@@ -4,7 +4,7 @@ CLI tool to replace strings in all files in a directory (recursively) (It's writ
 
 # Usage
 
-You will need a `config.toml` in the following format:
+You will need a `config.toml` in the following format, note that it is case sensitive:
 ```toml
 # config.toml
 from = "to"
