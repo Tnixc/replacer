@@ -15,6 +15,10 @@ fn main() {
     }
     let query = &args[1];
     let mut replacements: Vec<Replacement> = Vec::new();
+    if fs::read_to_string("./config.toml").is_err() {
+        println!("config.toml not found");
+        return;
+    }
     let reps = fs::read_to_string("./config.toml").unwrap();
     for z in reps.split("\n") {
         if !z.starts_with("#") && z != "" {
@@ -25,6 +29,10 @@ fn main() {
                 to: y[1].replace("\"", "").trim().to_string(),
             });
         }
+    }
+    if fs::read_dir(query).is_err() {
+        println!("{} not found", query);
+        return;
     }
     recursive_file(&PathBuf::from(query), &replacements)
 }
