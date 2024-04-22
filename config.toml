@@ -1,52 +1,26 @@
-# rosewater 
 f5e0dc = "ffbe91"
-# flamingo 
 f2cdcd = "f0b4b4"
-# pink 
 f5c2e7 = "f0aadd"
-# mauve 
 cba6f7 = "c198fd"
-# red 
-f38ba8 = "ff6c8d" #comment
-# maroon 
+f38ba8 = "ff6c8d"
 eba0ac = "ff8bb3"
-# peach 
 fab387 = "ff9856"
-# yellow 
 f9e2af = "e9ad5b"
-# green 
 a6e3a1 = "90d05a"
-# teal 
 94e2d5 = "41ddca"
-# sky 
 89dceb = "00bcdb"
-# sapphire 
 74c7ec = "5ed2ff"
-# blue 
 89b4fa = "6ea3fe"
-# lavender 
 b4befe = "98a4f5"
-# text 
 cdd6f4 = "becaf9"
-# subtext1 
 bac2de = "b5c9ff"
-# subtext0 
-a6adc8 = "a0b4e8"
-# overlay2 
-9399b2 = "92a7e0"
-# overlay1 
-7f849c = "6b7eb3"
-# overlay0 
-6c7086 = "526296"
-# surface2 
-585b70 = "2c2e42"
-# surface1 
-45475a = "3d3f57"
-# surface0 
-313244 = "2f3145"
-# base 
-1e1e2e = "1f202d"
-# mantle 
-181825 = "16161f"
-# crust 
-11111b = "13131a"
+a6adc8 = "aabbe3"
+9399b2 = "939ab7"
+7f849c = "8087a2"
+6c7086 = "6e738d"
+585b70 = "5b6078"
+45475a = "494d64"
+313244 = "363a4f"
+1e1e2e = "24273a"
+181825 = "1e2030"
+11111b = "181926"
