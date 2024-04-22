@@ -1,26 +1,11 @@
-#ffbe91
-#f0b4b4
-#f0aadd
-#c198fd
-#ff6c8d
-#ff8bb3
-#ff9856
-#e9ad5b
-#90d05a
-#41ddca
-#18d6f5
-#5ed2ff
-#6ea3fe
-#98a4f5
-#becaf9
-#b5c9ff
-#aabbe3
-#939ab7
-#8087a2
-#6e738d
-#5b6078
-#494d64
-#363a4f
-#24273a
-#1e2030
-#181926
+#ffbe91	#f0b4b4	#f0aadd
+#c198fd	#ff6c8d	#ff8bb3
+#ff9856	#e9ad5b	#90d05a
+#41ddca	#18d6f5	#5ed2ff
+#6ea3fe	#98a4f5	#becaf9
+#b5c9ff	#aabbe3	#939ab7
+#8087a2	#6e738d	#5b6078
+#494d64	#363a4f	#24273a
+#1e2030	#181926	
+
+
