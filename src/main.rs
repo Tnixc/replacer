@@ -1,9 +1,10 @@
+use regex::Regex;
 use std::env;
 use std::fs;
 use std::path::PathBuf;
 #[derive(Debug)]
 struct Replacement {
-    pub from: String,
+    pub from: Regex,
     pub to: String,
 }
 
@@ -25,7 +26,7 @@ fn main() {
             let x = z.split("#").collect::<Vec<&str>>()[0];
             let y: Vec<&str> = x.split("=").collect();
             replacements.push(Replacement {
-                from: y[0].trim().to_string(),
+                from: Regex::new(("(?i)".to_string() + y[0].trim()).as_str()).unwrap(),
                 to: y[1].replace("\"", "").trim().to_string(),
             });
         }
@@ -49,7 +50,6 @@ fn recursive_file(path: &PathBuf, replacements: &Vec<Replacement>) {
         }
     }
 }
-
 fn op(file: &PathBuf, reqs: &Vec<Replacement>) {
     if !file.is_file() {
         panic!("something has gone terribly wrong");
@@ -58,15 +58,9 @@ fn op(file: &PathBuf, reqs: &Vec<Replacement>) {
     if text == "" {
         return;
     }
-    let mut counta = 0;
     for req in reqs {
-        if text.contains(req.from.as_str()) {
-            counta += 1;
-        }
-        text = text.replace(req.from.as_str(), req.to.as_str());
+        text = req.from.replace_all(text.as_str(), &req.to).to_string();
     }
     let _ = fs::write(file, text);
-    if counta > 0{
-        println!("{:?}, replaced {:?} terms", file, counta)
-    }
+    println!("{:?}", file)
 }
