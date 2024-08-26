@@ -12,6 +12,13 @@ struct Config {
 }
 
 #[derive(Debug, Deserialize)]
+struct TempConfig {
+    pairs: Vec<(String, String)>,
+    ignore: Option<IgnoreConfig>,
+    case_sensitive: Option<bool>,
+}
+
+#[derive(Debug, Deserialize)]
 struct IgnoreConfig {
     files: Vec<String>,
     directories: Vec<String>,
@@ -31,8 +38,32 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
     let query = &args[1];
+    let temp_config: TempConfig = toml::from_str(&fs::read_to_string("./config.toml")?)?;
+    if temp_config.pairs.is_empty() {
+        println!("No pairs found in the config file.");
+        return Ok(());
+    }
 
-    let config: Config = toml::from_str(&fs::read_to_string("./config.toml")?)?;
+    let mut config;
+    if temp_config.ignore.is_none() {
+        config = Config {
+            pairs: temp_config.pairs.clone(),
+            ignore: IgnoreConfig {
+                files: vec![],
+                directories: vec![],
+                patterns: vec![],
+            },
+            case_sensitive: temp_config.case_sensitive,
+        };
+    } else {
+        config = Config {
+            pairs: temp_config.pairs.clone(),
+            ignore: temp_config.ignore.unwrap(),
+            case_sensitive: temp_config.case_sensitive,
+        }
+    }
+
+    config.ignore.files.push("config.toml".to_string());
 
     let case_sensitive = config.case_sensitive.unwrap_or(true);
 
@@ -75,7 +106,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             &ignore_patterns,
         );
     } else {
-        println!("The specified path is neither a file nor a directory.");
+        eprintln!("The specified path is neither a file nor a directory.");
     }
 
     Ok(())
@@ -87,10 +118,13 @@ fn recursive_file(
     ignore_config: &IgnoreConfig,
     ignore_patterns: &[Regex],
 ) {
-    if ignore_config
-        .directories
-        .contains(&path.file_name().unwrap_or_default().to_string_lossy().to_string())
-    {
+    if ignore_config.directories.contains(
+        &path
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string(),
+    ) {
         return;
     }
 
@@ -124,19 +158,28 @@ fn op(
     }
 
     if !file.is_file() {
-        eprintln!("Operation failed at {}.", file.display());
+        eprintln!("Error: Operation failed at {}.", file.display());
         return;
     }
 
     match fs::read_to_string(file) {
         Ok(mut text) => {
+            let old = text.clone();
             for req in reqs {
                 text = req.from.replace_all(&text, &req.to).to_string();
+            }
+            let mut replaced = false;
+            if old != text {
+                replaced = true;
             }
             if let Err(e) = fs::write(file, text) {
                 eprintln!("Failed to write to {}: {}", file.display(), e);
             } else {
-                println!("Processed: {:?}", file);
+                if replaced {
+                    println!("Replaced: {:?}", file);
+                } else {
+                    println!("No change: {:?}", file);
+                }
             }
         }
         Err(e) => eprintln!("Failed to read {}: {}", file.display(), e),
@@ -158,9 +201,7 @@ fn glob_to_regex(pattern: &str) -> String {
     regex
 }
 
-
 #[cfg(test)]
-
 #[test]
 fn test_glob_to_regex() {
     assert_eq!(glob_to_regex("*.txt"), "^.*\\.txt$");
