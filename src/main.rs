@@ -157,3 +157,36 @@ fn glob_to_regex(pattern: &str) -> String {
     regex.push('$');
     regex
 }
+
+
+#[cfg(test)]
+
+#[test]
+fn test_glob_to_regex() {
+    assert_eq!(glob_to_regex("*.txt"), "^.*\\.txt$");
+    assert_eq!(glob_to_regex("file?.log"), "^file.\\.log$");
+    assert_eq!(glob_to_regex("data.*"), "^data\\..*$");
+}
+
+#[test]
+fn test_replacement() {
+    let replacement = Replacement {
+        from: Regex::new("(?i)hello").unwrap(),
+        to: "world".to_string(),
+    };
+    let text = "Hello, HELLO, hello";
+    let result = replacement.from.replace_all(text, &replacement.to);
+    assert_eq!(result, "world, world, world");
+}
+
+#[test]
+fn test_ignore_patterns() {
+    let ignore_patterns = vec![
+        Regex::new(&glob_to_regex("*.log")).unwrap(),
+        Regex::new(&glob_to_regex("temp*")).unwrap(),
+    ];
+    assert!(ignore_patterns[0].is_match("file.log"));
+    assert!(!ignore_patterns[0].is_match("file.txt"));
+    assert!(ignore_patterns[1].is_match("temp_file"));
+    assert!(!ignore_patterns[1].is_match("file_temp"));
+}
