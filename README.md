@@ -4,11 +4,21 @@ CLI tool to replace strings in all files in a directory (recursively) (It's writ
 
 # Usage
 
-You will need a `config.toml` in the following format, note that it is case sensitive:
+You will need a `config.toml` in the following format:
 ```toml
 # config.toml
-from = "to"
+pairs = [
+    ["foo", "bar"]
+]
+case_sensitive = true # defaults to true
+
+# Ignore Configuration
+[ignore]
+files = ["config.toml", "ignore_this.txt"] # config.toml is ignored by default
+directories = ["ignore_dir"]
+patterns = ["*.ignore"]
 ```
+
 Then run the following:
 ```sh
 replacer ./path/to/target
