@@ -7,14 +7,8 @@ use std::path::{Path, PathBuf};
 #[derive(Debug, Deserialize)]
 struct Config {
     pairs: Vec<(String, String)>,
+    #[serde(default)]
     ignore: IgnoreConfig,
-    case_sensitive: Option<bool>,
-}
-
-#[derive(Debug, Deserialize)]
-struct TempConfig {
-    pairs: Vec<(String, String)>,
-    ignore: Option<IgnoreConfig>,
     case_sensitive: Option<bool>,
 }
 
@@ -23,6 +17,16 @@ struct IgnoreConfig {
     files: Vec<String>,
     directories: Vec<String>,
     patterns: Vec<String>,
+}
+
+impl Default for IgnoreConfig {
+    fn default() -> Self {
+        IgnoreConfig {
+            files: vec![],
+            directories: vec![],
+            patterns: vec![],
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -38,29 +42,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
     let query = &args[1];
-    let temp_config: TempConfig = toml::from_str(&fs::read_to_string("./config.toml")?)?;
-    if temp_config.pairs.is_empty() {
+    let mut config: Config = toml::from_str(&fs::read_to_string("./config.toml")?)?;
+    if config.pairs.is_empty() {
         println!("No pairs found in the config file.");
         return Ok(());
-    }
-
-    let mut config;
-    if temp_config.ignore.is_none() {
-        config = Config {
-            pairs: temp_config.pairs.clone(),
-            ignore: IgnoreConfig {
-                files: vec![],
-                directories: vec![],
-                patterns: vec![],
-            },
-            case_sensitive: temp_config.case_sensitive,
-        };
-    } else {
-        config = Config {
-            pairs: temp_config.pairs.clone(),
-            ignore: temp_config.ignore.unwrap(),
-            case_sensitive: temp_config.case_sensitive,
-        }
     }
 
     config.ignore.files.push("config.toml".to_string());
