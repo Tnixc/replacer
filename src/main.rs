@@ -42,13 +42,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
     let query = &args[1];
-    let mut config: Config = toml::from_str(&fs::read_to_string("./config.toml")?)?;
+    let mut config: Config = toml::from_str(&fs::read_to_string("./replacer.config.toml")?)?;
     if config.pairs.is_empty() {
         println!("No pairs found in the config file.");
         return Ok(());
     }
 
-    config.ignore.files.push("config.toml".to_string());
+    config.ignore.files.push("replacer.config.toml".to_string());
 
     let case_sensitive = config.case_sensitive.unwrap_or(true);
 
