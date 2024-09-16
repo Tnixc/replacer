@@ -14,17 +14,17 @@ struct Config {
 
 #[derive(Debug, Deserialize)]
 struct IgnoreConfig {
-    files: Vec<String>,
-    directories: Vec<String>,
-    patterns: Vec<String>,
+    files: Option<Vec<String>>,
+    directories: Option<Vec<String>>,
+    patterns: Option<Vec<String>>,
 }
 
 impl Default for IgnoreConfig {
     fn default() -> Self {
         IgnoreConfig {
-            files: vec![],
-            directories: vec![],
-            patterns: vec![],
+            files: Some(vec![]),
+            directories: Some(vec![]),
+            patterns: Some(vec![]),
         }
     }
 }
@@ -48,7 +48,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
-    config.ignore.files.push("replacer.config.toml".to_string());
+    config
+        .ignore
+        .files
+        .get_or_insert(vec![])
+        .push("replacer.config.toml".to_string());
+    config
+        .ignore
+        .directories
+        .get_or_insert(vec![])
+        .push(".git".to_string());
 
     let case_sensitive = config.case_sensitive.unwrap_or(true);
 
@@ -68,10 +77,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .collect();
 
+    let default: Vec<String> = Vec::new();
     let ignore_patterns: Vec<Regex> = config
         .ignore
         .patterns
-        .clone()
+        .as_ref()
+        .unwrap_or(&default)
         .into_iter()
         .map(|pattern| Regex::new(&glob_to_regex(&pattern)).unwrap())
         .collect();
@@ -103,16 +114,22 @@ fn recursive_file(
     ignore_config: &IgnoreConfig,
     ignore_patterns: &[Regex],
 ) {
-    if ignore_config.directories.contains(
-        &path
-            .file_name()
-            .unwrap_or_default()
-            .to_string_lossy()
-            .to_string(),
-    ) {
+    if ignore_config
+        .directories
+        .as_ref()
+        .map(|dirs| {
+            dirs.contains(
+                &path
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .to_string(),
+            )
+        })
+        .unwrap_or(false)
+    {
         return;
     }
-
     if let Ok(entries) = fs::read_dir(path) {
         for entry in entries.flatten() {
             let path = entry.path();
@@ -134,7 +151,11 @@ fn op(
     let file_name = file.file_name().unwrap().to_string_lossy();
 
     // Check if the file should be ignored
-    if ignore_config.files.contains(&file_name.to_string())
+    if ignore_config
+        .files
+        .as_ref()
+        .map(|files| files.contains(&file_name.to_string()))
+        .unwrap_or(false)
         || ignore_patterns
             .iter()
             .any(|pattern| pattern.is_match(&file_name))
