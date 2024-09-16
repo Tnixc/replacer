@@ -1,0 +1,13 @@
+# Example Configuration - replacer.config.toml
+pairs = [ # Must be present.
+    ["old text 1", "new text 1"],
+    ["foo", "bar"]
+]
+
+case_sensitive = true # defaults to true
+
+# Ignore Configuration
+[ignore]
+files = ["ignore_this.txt"] # replacer.config.toml is ignored by default
+directories = ["ignore_dir"] # .git is ignored by default
+patterns = ["*.ignore"]
