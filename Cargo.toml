@@ -1,6 +1,6 @@
 [package]
-name = "replacer"
-version = "0.1.0"
+name = "replacer-cli"
+version = "0.1.1"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/Tnixc/replacer"
@@ -14,3 +14,6 @@ regex = "1.10.4"
 serde = { version = "1.0.209", features = ["derive"] }
 toml = "0.8.19"
 
+[[bin]]
+name = "replacer"
+path = "src/main.rs"

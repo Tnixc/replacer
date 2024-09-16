@@ -26,5 +26,5 @@ replacer ./path/to/target
 
 # Install
 ```sh
-cargo install --git https://github.com/Tnixc/replacer
+cargo install replacer-cli
 ```
