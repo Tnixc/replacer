@@ -3,7 +3,6 @@ name = "replacer"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
-license-file = "LICENSE"
 repository = "https://github.com/Tnixc/replacer"
 description = "A flexible cli to replace strings in files or a directory"
 authors = ["Tnixc <tnixxc@gmail.com>"]
