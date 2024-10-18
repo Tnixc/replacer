@@ -1,7 +1,7 @@
 use color_print::cprintln;
 use regex::Regex;
 use serde::Deserialize;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 mod args;
@@ -31,35 +31,45 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
-    let config_path = match matches.get_one::<String>("config") {
-        Some(c) => c,
-        None => {
-            cprintln!("<b><r>Error</></>: Config argument is missing");
-            return Ok(());
-        }
-    };
-
     let case_sensitive = matches.get_flag("case-insensitive");
 
-    let config_content = match fs::read_to_string(config_path) {
-        Ok(content) => content,
-        Err(e) => {
-            cprintln!(
-                "<b><r>Error</></>: Failed to read config file '{}': {}",
-                config_path,
-                e
-            );
-            return Ok(());
-        }
+    let mut config = Config {
+        pairs: Vec::new(),
+        ignore: Vec::new(),
+        case_sensitive: Some(case_sensitive),
     };
 
-    let mut config: Config = match toml::from_str(&config_content) {
-        Ok(c) => c,
-        Err(e) => {
-            cprintln!("<b><r>Error</></>: Failed to parse config file: {}", e);
-            return Ok(());
-        }
-    };
+    let cli_pairs: Vec<(String, String)> = matches
+        .get_many::<(String, String)>("pair")
+        .map(|pairs| pairs.cloned().collect())
+        .unwrap_or_default();
+
+    if cli_pairs.is_empty() {
+        // If no pairs are provided via CLI, try to read from config file
+        let config_path = matches.get_one::<String>("config").unwrap();
+        let config_content = match fs::read_to_string(config_path) {
+            Ok(content) => content,
+            Err(e) => {
+                cprintln!(
+                    "<b><r>Error</></>: Failed to read config file '{}': {}",
+                    config_path,
+                    e
+                );
+                return Ok(());
+            }
+        };
+
+        config = match toml::from_str(&config_content) {
+            Ok(c) => c,
+            Err(e) => {
+                cprintln!("<b><r>Error</></>: Failed to parse config file: {}", e);
+                return Ok(());
+            }
+        };
+        config.ignore.push(config_path.to_string());
+    } else {
+        config.pairs = cli_pairs;
+    }
 
     // Update ignore config based on command-line arguments
     if let Some(ignore_paths) = matches.get_many::<String>("ignore") {
@@ -72,23 +82,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         config.ignore.retain(|x| !no_ignore_set.contains(x));
     }
 
-    let mut pairs_map: HashMap<String, String> = config.pairs.into_iter().collect();
-    if let Some(cli_pairs) = matches.get_many::<(String, String)>("pair") {
-        for (from, to) in cli_pairs {
-            pairs_map.insert(from.to_string(), to.to_string());
-        }
-    }
-
-    config.pairs = pairs_map.into_iter().collect();
-
     if config.pairs.is_empty() {
         cprintln!(
             "<b><r>Error</></>: No pairs found in the config file or command-line arguments."
         );
         return Ok(());
     }
-
-    config.ignore.push(config_path.to_string());
 
     if !config.ignore.contains(&".git".to_string()) {
         config.ignore.push(".git".to_string());

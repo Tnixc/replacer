@@ -57,6 +57,7 @@ pub fn args() -> ArgMatches {
         )
         .after_help(r#"
 Flags passed to cli always override those set in the config file.
+You do not need a config file if you pass pairs as flags.
 HINT: You can use -- after flags which take in PATHS (such as -i) to continue the args.
 "#)
         .get_matches();
