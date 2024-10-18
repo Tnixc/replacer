@@ -11,6 +11,7 @@ authors = ["Tnixc <tnixxc@gmail.com>"]
 
 [dependencies]
 clap = { version = "4.5.20", features = ["derive"] }
+color-print = "0.3.6"
 regex = "1.10.4"
 serde = { version = "1.0.209", features = ["derive"] }
 toml = "0.8.19"

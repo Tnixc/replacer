@@ -1,7 +1,7 @@
 use regex::Regex;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
-
+use color_print::cprintln;
 use std::fs;
 use std::path::{Path, PathBuf};
 mod args;
@@ -50,7 +50,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     config.pairs = pairs_map.into_iter().collect();
 
     if config.pairs.is_empty() {
-        println!("No pairs found in the config file or command-line arguments.");
+        cprintln!("<b><r>Error</></>: No pairs found in the config file or command-line arguments.");
         return Ok(());
     }
 
@@ -99,7 +99,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             &ignore_patterns,
         );
     } else {
-        eprintln!("The specified path is neither a file nor a directory.");
+        cprintln!("<b><r>Error</></>: The specified path is neither a file nor a directory.");
     }
 
     Ok(())
@@ -144,7 +144,7 @@ fn op(file: &PathBuf, reqs: &[Replacement], ignore: &[String], ignore_patterns: 
     }
 
     if !file.is_file() {
-        eprintln!("Error: Operation failed at {}.", file.display());
+        cprintln!("<b><r>Error</></>: Operation failed at {}.", file.display());
         return;
     }
 
@@ -159,16 +159,16 @@ fn op(file: &PathBuf, reqs: &[Replacement], ignore: &[String], ignore_patterns: 
                 replaced = true;
             }
             if let Err(e) = fs::write(file, text) {
-                eprintln!("Failed to write to {}: {}", file.display(), e);
+                cprintln!("<b><r>Error</></>: Failed to write to {}: {}", file.display(), e);
             } else {
                 if replaced {
-                    println!("Replaced: {:?}", file);
+                    cprintln!("<b><g>Replaced</></>: {:?}", file);
                 } else {
-                    println!("No change: {:?}", file);
+                    cprintln!("<b><y>No change</></>: {:?}",file);
                 }
             }
         }
-        Err(e) => eprintln!("Failed to read {}: {}", file.display(), e),
+        Err(e) => cprintln!("<b><r>Error</></>: Failed to read {}: {}", file.display(), e),
     }
 }
 
