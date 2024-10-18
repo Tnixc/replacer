@@ -1,7 +1,7 @@
+use color_print::cprintln;
 use regex::Regex;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
-use color_print::cprintln;
 use std::fs;
 use std::path::{Path, PathBuf};
 mod args;
@@ -23,11 +23,43 @@ struct Replacement {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let matches = args::args();
 
-    let target = matches.get_one::<String>("target").unwrap();
-    let config_path = matches.get_one::<String>("config").unwrap();
+    let target = match matches.get_one::<String>("target") {
+        Some(t) => t,
+        None => {
+            cprintln!("<b><r>Error</></>: Target argument is missing");
+            return Ok(());
+        }
+    };
+
+    let config_path = match matches.get_one::<String>("config") {
+        Some(c) => c,
+        None => {
+            cprintln!("<b><r>Error</></>: Config argument is missing");
+            return Ok(());
+        }
+    };
+
     let case_sensitive = matches.get_flag("case-insensitive");
 
-    let mut config: Config = toml::from_str(&fs::read_to_string(config_path)?)?;
+    let config_content = match fs::read_to_string(config_path) {
+        Ok(content) => content,
+        Err(e) => {
+            cprintln!(
+                "<b><r>Error</></>: Failed to read config file '{}': {}",
+                config_path,
+                e
+            );
+            return Ok(());
+        }
+    };
+
+    let mut config: Config = match toml::from_str(&config_content) {
+        Ok(c) => c,
+        Err(e) => {
+            cprintln!("<b><r>Error</></>: Failed to parse config file: {}", e);
+            return Ok(());
+        }
+    };
 
     // Update ignore config based on command-line arguments
     if let Some(ignore_paths) = matches.get_many::<String>("ignore") {
@@ -50,18 +82,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     config.pairs = pairs_map.into_iter().collect();
 
     if config.pairs.is_empty() {
-        cprintln!("<b><r>Error</></>: No pairs found in the config file or command-line arguments.");
+        cprintln!(
+            "<b><r>Error</></>: No pairs found in the config file or command-line arguments."
+        );
         return Ok(());
     }
 
     config.ignore.push(config_path.to_string());
+
     if !config.ignore.contains(&".git".to_string()) {
         config.ignore.push(".git".to_string());
     }
 
     let case_sensitive = config.case_sensitive.unwrap_or(case_sensitive);
 
-    let replacements: Vec<Replacement> = config
+    let replacements: Vec<Replacement> = match config
         .pairs
         .into_iter()
         .map(|(from, to)| {
@@ -70,19 +105,40 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             } else {
                 format!("(?i){}", from)
             };
-            Replacement {
-                from: Regex::new(&regex_string).unwrap(),
-                to,
+            match Regex::new(&regex_string) {
+                Ok(regex) => Ok(Replacement { from: regex, to }),
+                Err(e) => {
+                    cprintln!("<b><r>Error</></>: Invalid regex '{}': {}", regex_string, e);
+                    Err(())
+                }
             }
         })
-        .collect();
+        .collect::<Result<Vec<_>, ()>>()
+    {
+        Ok(r) => r,
+        Err(_) => return Ok(()),
+    };
 
-    let ignore_patterns: Vec<Regex> = config
+    let ignore_patterns: Vec<Regex> = match config
         .ignore
         .iter()
         .filter(|&pattern| pattern.contains('*') || pattern.contains('?'))
-        .map(|pattern| Regex::new(&glob_to_regex(pattern)).unwrap())
-        .collect();
+        .map(|pattern| match Regex::new(&glob_to_regex(pattern)) {
+            Ok(regex) => Ok(regex),
+            Err(e) => {
+                cprintln!(
+                    "<b><r>Error</></>: Invalid glob pattern '{}': {}",
+                    pattern,
+                    e
+                );
+                Err(())
+            }
+        })
+        .collect::<Result<Vec<_>, ()>>()
+    {
+        Ok(p) => p,
+        Err(_) => return Ok(()),
+    };
 
     if Path::new(target).is_dir() {
         recursive_file(
@@ -99,7 +155,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             &ignore_patterns,
         );
     } else {
-        cprintln!("<b><r>Error</></>: The specified path is neither a file nor a directory.");
+        cprintln!(
+            "<b><r>Error</></>: The specified path '{}' is neither a file nor a directory.",
+            target
+        );
     }
 
     Ok(())
@@ -159,16 +218,24 @@ fn op(file: &PathBuf, reqs: &[Replacement], ignore: &[String], ignore_patterns: 
                 replaced = true;
             }
             if let Err(e) = fs::write(file, text) {
-                cprintln!("<b><r>Error</></>: Failed to write to {}: {}", file.display(), e);
+                cprintln!(
+                    "<b><r>Error</></>: Failed to write to {}: {}",
+                    file.display(),
+                    e
+                );
             } else {
                 if replaced {
                     cprintln!("<b><g>Replaced</></>: {:?}", file);
                 } else {
-                    cprintln!("<b><y>No change</></>: {:?}",file);
+                    cprintln!("<b><y>No change</></>: {:?}", file);
                 }
             }
         }
-        Err(e) => cprintln!("<b><r>Error</></>: Failed to read {}: {}", file.display(), e),
+        Err(e) => cprintln!(
+            "<b><r>Error</></>: Failed to read {}: {}",
+            file.display(),
+            e
+        ),
     }
 }
 
