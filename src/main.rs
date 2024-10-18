@@ -1,32 +1,17 @@
 use regex::Regex;
 use serde::Deserialize;
-use std::env;
+use std::collections::{HashMap, HashSet};
+
 use std::fs;
 use std::path::{Path, PathBuf};
+mod args;
 
 #[derive(Debug, Deserialize)]
 struct Config {
     pairs: Vec<(String, String)>,
     #[serde(default)]
-    ignore: IgnoreConfig,
+    ignore: Vec<String>,
     case_sensitive: Option<bool>,
-}
-
-#[derive(Debug, Deserialize)]
-struct IgnoreConfig {
-    files: Option<Vec<String>>,
-    directories: Option<Vec<String>>,
-    patterns: Option<Vec<String>>,
-}
-
-impl Default for IgnoreConfig {
-    fn default() -> Self {
-        IgnoreConfig {
-            files: Some(vec![]),
-            directories: Some(vec![]),
-            patterns: Some(vec![]),
-        }
-    }
 }
 
 #[derive(Debug)]
@@ -36,30 +21,45 @@ struct Replacement {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args: Vec<String> = env::args().collect();
-    if args.len() < 2 {
-        println!("Usage: {} <path/to/target>", args[0]);
-        return Ok(());
+    let matches = args::args();
+
+    let target = matches.get_one::<String>("target").unwrap();
+    let config_path = matches.get_one::<String>("config").unwrap();
+    let case_sensitive = matches.get_flag("case-insensitive");
+
+    let mut config: Config = toml::from_str(&fs::read_to_string(config_path)?)?;
+
+    // Update ignore config based on command-line arguments
+    if let Some(ignore_paths) = matches.get_many::<String>("ignore") {
+        config.ignore.extend(ignore_paths.cloned());
     }
-    let query = &args[1];
-    let mut config: Config = toml::from_str(&fs::read_to_string("./replacer.config.toml")?)?;
+
+    // Handle no-ignore paths
+    if let Some(no_ignore_paths) = matches.get_many::<String>("no-ignore") {
+        let no_ignore_set: HashSet<_> = no_ignore_paths.collect();
+        config.ignore.retain(|x| !no_ignore_set.contains(x));
+    }
+
+    let mut pairs_map: HashMap<String, String> = config.pairs.into_iter().collect();
+    if let Some(cli_pairs) = matches.get_many::<(String, String)>("pair") {
+        for (from, to) in cli_pairs {
+            pairs_map.insert(from.to_string(), to.to_string());
+        }
+    }
+
+    config.pairs = pairs_map.into_iter().collect();
+
     if config.pairs.is_empty() {
-        println!("No pairs found in the config file.");
+        println!("No pairs found in the config file or command-line arguments.");
         return Ok(());
     }
 
-    config
-        .ignore
-        .files
-        .get_or_insert(vec![])
-        .push("replacer.config.toml".to_string());
-    config
-        .ignore
-        .directories
-        .get_or_insert(vec![])
-        .push(".git".to_string());
+    config.ignore.push(config_path.to_string());
+    if !config.ignore.contains(&".git".to_string()) {
+        config.ignore.push(".git".to_string());
+    }
 
-    let case_sensitive = config.case_sensitive.unwrap_or(true);
+    let case_sensitive = config.case_sensitive.unwrap_or(case_sensitive);
 
     let replacements: Vec<Replacement> = config
         .pairs
@@ -77,26 +77,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .collect();
 
-    let default: Vec<String> = Vec::new();
     let ignore_patterns: Vec<Regex> = config
         .ignore
-        .patterns
-        .as_ref()
-        .unwrap_or(&default)
-        .into_iter()
-        .map(|pattern| Regex::new(&glob_to_regex(&pattern)).unwrap())
+        .iter()
+        .filter(|&pattern| pattern.contains('*') || pattern.contains('?'))
+        .map(|pattern| Regex::new(&glob_to_regex(pattern)).unwrap())
         .collect();
 
-    if Path::new(query).is_dir() {
+    if Path::new(target).is_dir() {
         recursive_file(
-            &PathBuf::from(query),
+            &PathBuf::from(target),
             &replacements,
             &config.ignore,
             &ignore_patterns,
         );
-    } else if Path::new(query).is_file() {
+    } else if Path::new(target).is_file() {
         op(
-            &PathBuf::from(query),
+            &PathBuf::from(target),
             &replacements,
             &config.ignore,
             &ignore_patterns,
@@ -111,51 +108,34 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 fn recursive_file(
     path: &PathBuf,
     replacements: &[Replacement],
-    ignore_config: &IgnoreConfig,
+    ignore: &[String],
     ignore_patterns: &[Regex],
 ) {
-    if ignore_config
-        .directories
-        .as_ref()
-        .map(|dirs| {
-            dirs.contains(
-                &path
-                    .file_name()
-                    .unwrap_or_default()
-                    .to_string_lossy()
-                    .to_string(),
-            )
-        })
-        .unwrap_or(false)
-    {
+    if ignore.contains(
+        &path
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string(),
+    ) {
         return;
     }
     if let Ok(entries) = fs::read_dir(path) {
         for entry in entries.flatten() {
             let path = entry.path();
             if path.is_dir() {
-                recursive_file(&path, replacements, ignore_config, ignore_patterns);
+                recursive_file(&path, replacements, ignore, ignore_patterns);
             } else if path.is_file() {
-                op(&path, replacements, ignore_config, ignore_patterns);
+                op(&path, replacements, ignore, ignore_patterns);
             }
         }
     }
 }
 
-fn op(
-    file: &PathBuf,
-    reqs: &[Replacement],
-    ignore_config: &IgnoreConfig,
-    ignore_patterns: &[Regex],
-) {
+fn op(file: &PathBuf, reqs: &[Replacement], ignore: &[String], ignore_patterns: &[Regex]) {
     let file_name = file.file_name().unwrap().to_string_lossy();
 
-    // Check if the file should be ignored
-    if ignore_config
-        .files
-        .as_ref()
-        .map(|files| files.contains(&file_name.to_string()))
-        .unwrap_or(false)
+    if ignore.contains(&file_name.to_string())
         || ignore_patterns
             .iter()
             .any(|pattern| pattern.is_match(&file_name))
