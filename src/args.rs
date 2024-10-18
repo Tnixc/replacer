@@ -4,11 +4,10 @@ use std::error::Error;
 pub fn args() -> ArgMatches {
     let cmd = Command::new("Replacer")
         .author("Tnixc")
-        .about("Replaces text in files, recursively and quickly")
+        .about("Replaces text in files or stdin, recursively and quickly")
         .arg(
             Arg::new("target")
-                .help("Path to the target file or directory")
-                .required(true)
+                .help("Path to the target file or directory (omit for stdin)")
                 .index(1),
         )
         .arg(

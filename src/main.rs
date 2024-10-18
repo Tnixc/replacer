@@ -3,6 +3,7 @@ use regex::Regex;
 use serde::Deserialize;
 use std::collections::HashSet;
 use std::fs;
+use std::io::{self, BufRead, Write};
 use std::path::{Path, PathBuf};
 mod args;
 
@@ -22,15 +23,6 @@ struct Replacement {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let matches = args::args();
-
-    let target = match matches.get_one::<String>("target") {
-        Some(t) => t,
-        None => {
-            cprintln!("<b><r>Error</></>: Target argument is missing");
-            return Ok(());
-        }
-    };
-
     let case_sensitive = matches.get_flag("case-insensitive");
 
     let mut config = Config {
@@ -139,25 +131,42 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Err(_) => return Ok(()),
     };
 
-    if Path::new(target).is_dir() {
-        recursive_file(
-            &PathBuf::from(target),
-            &replacements,
-            &config.ignore,
-            &ignore_patterns,
-        );
-    } else if Path::new(target).is_file() {
-        op(
-            &PathBuf::from(target),
-            &replacements,
-            &config.ignore,
-            &ignore_patterns,
-        );
-    } else {
-        cprintln!(
-            "<b><r>Error</></>: The specified path '{}' is neither a file nor a directory.",
-            target
-        );
+    match matches.get_one::<String>("target") {
+        Some(target) => {
+            if Path::new(target).is_dir() {
+                recursive_file(
+                    &PathBuf::from(target),
+                    &replacements,
+                    &config.ignore,
+                    &ignore_patterns,
+                );
+            } else if Path::new(target).is_file() {
+                op(
+                    &PathBuf::from(target),
+                    &replacements,
+                    &config.ignore,
+                    &ignore_patterns,
+                );
+            } else {
+                cprintln!(
+                    "<b><r>Error</></>: The specified path '{}' is neither a file nor a directory.",
+                    target
+                );
+            }
+        }
+        None => {
+            // Process stdin and write to stdout
+            let stdin = io::stdin();
+            let mut stdout = io::stdout();
+            for line in stdin.lock().lines() {
+                let line = line?;
+                let mut modified_line = line;
+                for req in &replacements {
+                    modified_line = req.from.replace_all(&modified_line, &req.to).to_string();
+                }
+                writeln!(stdout, "{}", modified_line)?;
+            }
+        }
     }
 
     Ok(())
